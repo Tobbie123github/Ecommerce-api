@@ -1,0 +1,22 @@
+# Environment variables - NEVER push this
+.env
+
+# Air live reload binary output
+tmp/
+
+# Built binaries
+*.exe
+*.out
+*.bin
+
+# Go workspace file
+go.work
+go.work.sum
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
