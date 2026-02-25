@@ -74,7 +74,7 @@ func (h *Handler) GetProductByID(c *gin.Context) {
 		return
 	}
 
-	product, err := h.svc.repo.GetId(c.Request.Context(), objId)
+	product, err := h.svc.repo.GetById(c.Request.Context(), objId)
 
 	if err != nil {
 
@@ -95,4 +95,55 @@ func (h *Handler) GetProductByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"data": product,
 	})
+}
+
+func (h *Handler) UpdateProductByID(c *gin.Context) {
+
+
+	idStr := c.Param("id")
+	var update UpdateProduct
+	if err := c.ShouldBind(&update); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request",
+		})
+		return
+	}
+
+	prod, err := h.svc.UpdateItems(c.Request.Context(), update, idStr)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Product updated successfully",
+		"data": prod,
+	})
+
+}
+
+
+
+func (h *Handler) DeleteProductByID(c *gin.Context) {
+
+	id := c.Param("id")
+
+
+	err := h.svc.DeleteProduct(c.Request.Context(), id)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Product deleted successfully",
+	})
+
 }

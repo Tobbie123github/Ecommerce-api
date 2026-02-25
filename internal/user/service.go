@@ -25,6 +25,7 @@ func NewService(repo *Repo, jwtSecret string) *Service {
 }
 
 type RegisterInput struct {
+	Name string `json:"name"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
@@ -44,9 +45,10 @@ type AuthResult struct {
 func (s *Service) Register(ctx context.Context, input RegisterInput) (AuthResult, error) {
 	email := strings.ToLower(strings.TrimSpace(input.Email))
 	password := strings.ToLower(strings.TrimSpace(input.Password))
+	name := strings.ToLower(strings.TrimSpace(input.Name))
 
-	if email == "" || password == "" {
-		return AuthResult{}, errors.New("Email and password must not be empty")
+	if email == "" || password == "" || name == ""{
+		return AuthResult{}, errors.New("Name, Email and password must not be empty")
 	}
 
 	if len(password) < 6 {
@@ -81,6 +83,7 @@ func (s *Service) Register(ctx context.Context, input RegisterInput) (AuthResult
 	now := time.Now().UTC()
 
 	u := User{
+		Name: name,
 		Email:        email,
 		PasswordHash: string(hashPass),
 		Role:         "user",

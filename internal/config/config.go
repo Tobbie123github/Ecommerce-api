@@ -13,6 +13,9 @@ type Config struct {
 	PORT      string
 	JWTSecret string
 	CLOUDINARY_URL string
+	REDIS_URL string
+	STRIPE_SECRET_KEY string
+	STRIPE_WEBHOOK_SECRET string
 }
 
 func Load() (Config, error) {
@@ -52,6 +55,24 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("cloudinary not found") 
 	}
+
+	redisURL, err := extractText("REDIS_URL")
+
+	if err != nil {
+		return Config{}, fmt.Errorf("redis url not found") 
+	}
+
+	stripe, err := extractText("STRIPE_SECRET_KEY")
+
+	if err != nil {
+		return Config{}, fmt.Errorf("stripe secrete key not found") 
+	}
+
+	webhook, err := extractText("STRIPE_WEBHOOK_SECRET")
+
+	if err != nil {
+		return Config{}, fmt.Errorf("stripe webhook secrete not found") 
+	}
 	
 	return Config{
 		MONGO_URI: mongoURI,
@@ -59,6 +80,9 @@ func Load() (Config, error) {
 		PORT: port,
 		JWTSecret: jwtSecret,
 		CLOUDINARY_URL: cloudinary,
+		REDIS_URL: redisURL,
+		STRIPE_SECRET_KEY: stripe,
+		STRIPE_WEBHOOK_SECRET: webhook,
 	}, nil
 
 }
@@ -67,8 +91,8 @@ func extractText(key string) (string, error) {
 
 	value := os.Getenv(key)
 
-	if value == " " {
-		return " ", fmt.Errorf("Env cannot have an empty value")
+	if value == "" {
+		return "", fmt.Errorf("Env cannot have an empty value")
 	}
 
 	return value, nil

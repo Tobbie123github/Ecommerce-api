@@ -88,7 +88,7 @@ func GetRole(c *gin.Context) (string, bool) {
 	res, ok := c.Get(ctxRoleKey)
 
 	if !ok {
-		return " ", false
+		return "", false
 	}
 
 	role, ok := res.(string)

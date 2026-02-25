@@ -3,10 +3,12 @@ package app
 import (
 	"context"
 	"fmt"
-	"go-auth/internal/db"
 	"go-auth/internal/config"
+	"go-auth/internal/db"
 	"time"
 
+	//"github.com/go-redis/redis/v8"
+	"github.com/go-redis/redis/v8"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
@@ -15,6 +17,7 @@ type App struct {
 
 	MongoClient *mongo.Client
 	DB 	*mongo.Database
+	Redis *redis.Client
 }
 
 
@@ -30,14 +33,21 @@ func New(ctx context.Context) (*App, error) {
 	}
 
 	mongo, err := db.Connect(ctx, cfg)
+	
 	if err != nil {
 		return nil, fmt.Errorf("Cant load db: %v", err)
 	}
+	redisCli, err := db.Redis(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("Cant load db: %v", err)
+	}
+	
 
 	return &App{
 		Config: cfg,
 		MongoClient: mongo.Client,
 		DB: mongo.DB,
+		Redis: redisCli,
 	}, nil
 
 
