@@ -18,28 +18,28 @@ func NewHandler(svc *Service) *Handler {
 }
 
 func (h *Handler) CreateNewOrder(c *gin.Context) {
+    userId, ok := middleware.GetUserId(c)
+    if !ok {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+        return
+    }
 
-	// get userId
-	userId, ok := middleware.GetUserId(c)
+    var delivery DeliveryInfo
+    if err := c.ShouldBindJSON(&delivery); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "delivery info required"})
+        return
+    }
 
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": ok,
-		})
-	}
+    order, err := h.svc.CreateOrder(c.Request.Context(), userId, delivery)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
 
-	order, err := h.svc.CreateOrder(c.Request.Context(), userId)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusCreated, gin.H{
-		"message": "Order created successfully",
-		"order":   order,
-	})
-
+    c.JSON(http.StatusCreated, gin.H{
+        "message": "Order created successfully",
+        "order":   order,
+    })
 }
 
 func (h *Handler) GetUserOrder(c *gin.Context) {
@@ -110,6 +110,23 @@ func (h *Handler) DeleteOrder(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Order Deleted successfully",
 	})
+}
+
+func (h *Handler) GellAllOrder(c *gin.Context){
+
+	orders, err := h.svc.repo.Orders(c)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": orders,
+	})
+
+
 }
 
 // func (h *Handler) UpdateStatusById(c *gin.Context){

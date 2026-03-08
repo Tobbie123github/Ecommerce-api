@@ -26,7 +26,7 @@ func NewService(repo *Repo, cartRepo *cart.Repo, productRepo *product.Repo) *Ser
 	}
 }
 
-func (svc *Service) CreateOrder(ctx context.Context, userId string) (Order, error) {
+func (svc *Service) CreateOrder(ctx context.Context, userId string, delivery DeliveryInfo) (Order, error) {
 
 	// Get cart from redis
 
@@ -58,7 +58,7 @@ func (svc *Service) CreateOrder(ctx context.Context, userId string) (Order, erro
 
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
-				return Order{}, errors.New("product not found")
+				continue
 			}
 			return Order{}, fmt.Errorf("unable to get existing product: %v", err)
 		}
@@ -70,13 +70,18 @@ func (svc *Service) CreateOrder(ctx context.Context, userId string) (Order, erro
 
 		// if instock then create order
 
+		effectivePrice := product.Price
+		if product.Discount > 0 {
+			effectivePrice = product.Discount
+		}
+
 		// insert the cart items into order items
-		subtotal := item.Price * float64(item.Quantity)
+		subtotal := effectivePrice * float64(item.Quantity)
 
 		orderItems = append(orderItems, OrderItem{
 			ProductID: item.ProductID,
 			Name:      item.Name,
-			Price:     item.Price,
+			Price:     effectivePrice,
 			Quantity:  item.Quantity,
 			Subtotal:  subtotal,
 		})
@@ -91,6 +96,7 @@ func (svc *Service) CreateOrder(ctx context.Context, userId string) (Order, erro
 		Total:      total,
 		Status:     "pending",
 		PaymentRef: "nil",
+		Delivery:   delivery,
 		CreatedAt:  time.Now().UTC(),
 		UpdatedAt:  time.Now().UTC(),
 	}
@@ -137,17 +143,15 @@ func (svc *Service) DeleteOrder(ctx context.Context, orderId string, userId stri
 	return svc.repo.Delete(ctx, id)
 }
 
-
 func (svc *Service) UpdateOrder(ctx context.Context, orderId string, userId string, status string, paymentRef string) error {
-
 
 	order, err := svc.repo.GetById(ctx, orderId)
 
-   if err != nil {
+	if err != nil {
 		return fmt.Errorf("order not found: %v", err)
 	}
 
-    if order.UserID != userId {
+	if order.UserID != userId {
 		return errors.New("Not Authorized")
 	}
 
@@ -158,4 +162,3 @@ func (svc *Service) UpdateOrder(ctx context.Context, orderId string, userId stri
 	return nil
 
 }
-

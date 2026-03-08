@@ -65,7 +65,7 @@ func NewRouter(a *app.App, cfg config.Config) *gin.Engine {
 
 	r.GET("/products", prodHandler.GetAllProduct)
 	r.GET("/products/:id", prodHandler.GetProductByID)
-	r.POST("/payments/webhook", paymentHandler.HandleWebhook)
+	r.POST("/payment/webhook", paymentHandler.HandleWebhook)
 
 	authenticated := r.Group("")
 
@@ -82,7 +82,8 @@ func NewRouter(a *app.App, cfg config.Config) *gin.Engine {
 	authenticated.GET("/order/:id", orderHander.GetUserOrder)
 	//authenticated.PUT("order/update/:id", orderHander.UpdateStatusById)
 
-	authenticated.POST("/payments/initiate/:id", paymentHandler.InitiatePayment)
+	authenticated.POST("/payment/initiate/:id", paymentHandler.InitiatePayment)
+	authenticated.GET("/payment/verify/:reference", paymentHandler.VerifyPayment)
 	authenticated.GET("/payments", paymentHandler.GetAllPayments)
 	authenticated.GET("/payment/:id", paymentHandler.GetPaymentByID)
 	//authenticated.PUT("/payment/update/:id", paymentHandler.UpdatePaymentStatus)
@@ -113,6 +114,8 @@ func NewRouter(a *app.App, cfg config.Config) *gin.Engine {
 	ad.POST("/product", prodHandler.CreateProduct)
 	ad.PUT("/update-product/:id", prodHandler.UpdateProductByID)
 	ad.DELETE("/delete-product/:id", prodHandler.DeleteProductByID)
+	ad.GET("/all/orders", orderHander.GellAllOrder)
+	ad.GET("/all/payments", paymentHandler.GellAllPayments)
 	// profile route -> must be auth with Bearer tkn
 	// authenticated.Use(middleware.AuthRequired(cfg.JWTSecret))
 	// {

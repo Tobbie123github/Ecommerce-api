@@ -19,7 +19,7 @@ func AuthRequired(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := strings.TrimSpace(c.GetHeader("Authorization"))
 
-		if authHeader == " " {
+		if authHeader == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "Missing Unauthorized Token",
 			})
@@ -63,6 +63,7 @@ func AuthRequired(jwtSecret string) gin.HandlerFunc {
 
 		c.Set(ctxUserIdKey, claims.Subject)
 		c.Set(ctxRoleKey, claims.Role)
+		
 
 		c.Next()
 

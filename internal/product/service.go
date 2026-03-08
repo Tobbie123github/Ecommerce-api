@@ -27,29 +27,31 @@ func NewService(repo *Repo) *Service {
 	}
 }
 
-
 type ProductInput struct {
-	Name        string    `form:"name"`
-	Description string    `form:"description"`
-	Price       float64   `form:"price"`
-	Discount    float64  `form:"discount"`
-	Category    string    `form:"category"`
-	InStock int `form:"instock"`
-	Files     []*multipart.FileHeader `form:"files"`
+	Name        string                  `form:"name"`
+	Description string                  `form:"description"`
+	Price       float64                 `form:"price"`
+	Discount    float64                 `form:"discount"`
+	Category    string                  `form:"category"`
+	Size        string                  `form:"size"`
+	InStock     int                     `form:"instock"`
+	Featured    bool                    `form:"featured"`
+	Files       []*multipart.FileHeader `form:"files"`
 }
 
 type UpdateProduct struct {
-	Name        string    `form:"name"`
-	Description string    `form:"description"`
-	Price       float64   `form:"price"`
-	Discount    float64  `form:"discount"`
-	InStock int `form:"instock"` 
-	Category    string    `form:"category"`
-	Files     []*multipart.FileHeader `form:"files"`
-	ImageURL    []string                
-    PublicIDs   []string
+	Name        string                  `form:"name"`
+	Description string                  `form:"description"`
+	Price       float64                 `form:"price"`
+	Featured    bool                    `form:"featured"`
+	Discount    float64                 `form:"discount"`
+	Size        string                  `form:"size"`
+	InStock     int                     `form:"instock"`
+	Category    string                  `form:"category"`
+	Files       []*multipart.FileHeader `form:"files"`
+	ImageURL    []string
+	PublicIDs   []string
 }
-
 
 func (s *Service) UploadItems(ctx context.Context, input ProductInput) (Product, error) {
 
@@ -57,8 +59,12 @@ func (s *Service) UploadItems(ctx context.Context, input ProductInput) (Product,
 	prodDescription := strings.TrimSpace(input.Description)
 	prodCategory := strings.TrimSpace(input.Category)
 
-	if prodName == "" || prodDescription == "" || input.Price == 0 || prodCategory == ""{
+	if prodName == "" || prodDescription == "" || input.Price == 0 || prodCategory == "" {
 		return Product{}, errors.New("Required Field")
+	}
+
+	if input.Discount > input.Price {
+		return Product{}, errors.New("Discount Price should be less than Original Price")
 	}
 
 	// handle upload to cloudinary
@@ -67,17 +73,17 @@ func (s *Service) UploadItems(ctx context.Context, input ProductInput) (Product,
 		return Product{}, errors.New("File should not be empty")
 	}
 
-	 cloud, err := utils.NewCloudinary()
+	cloud, err := utils.NewCloudinary()
 
-	 if err != nil {
+	if err != nil {
 		return Product{}, fmt.Errorf("Issue with the cloud utils: %v", err)
 	}
 
 	var imageUrls []string
 	var publicIds []string
 
-	for _,FileHeader := range input.Files {
-		
+	for _, FileHeader := range input.Files {
+
 		file, err := FileHeader.Open()
 
 		if err != nil {
@@ -86,34 +92,35 @@ func (s *Service) UploadItems(ctx context.Context, input ProductInput) (Product,
 
 		defer file.Close()
 
-		uploadRes , err := cloud.Upload.Upload(ctx, file, uploader.UploadParams{
-				Folder:   "product-images",
-				UniqueFilename: api.Bool(true),
+		uploadRes, err := cloud.Upload.Upload(ctx, file, uploader.UploadParams{
+			Folder:         "product-images",
+			UniqueFilename: api.Bool(true),
 		})
 
-	if err != nil {
-       return Product{}, fmt.Errorf("Error getting result: %v", err)
-    }
+		if err != nil {
+			return Product{}, fmt.Errorf("Error getting result: %v", err)
+		}
 
-	imageUrls = append(imageUrls, uploadRes.SecureURL)
-	publicIds = append(publicIds, uploadRes.PublicID)
+		imageUrls = append(imageUrls, uploadRes.SecureURL)
+		publicIds = append(publicIds, uploadRes.PublicID)
 
 	}
-	
-	
+
 	now := time.Now().UTC()
 
 	p := Product{
-		Name: prodName,
+		Name:        prodName,
 		Description: prodDescription,
-		Price: input.Price,
-		Discount: input.Discount,
-		Category: prodCategory,
-		ImageURL: imageUrls,
-		PublicIDs: publicIds,
-		InStock: input.InStock,
-		CreatedAt: now,
-		UpdatedAt: now,
+		Price:       input.Price,
+		Discount:    input.Discount,
+		Category:    prodCategory,
+		Featured:    input.Featured,
+		ImageURL:    imageUrls,
+		Size:        input.Size,
+		PublicIDs:   publicIds,
+		InStock:     input.InStock,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 
 	// Insert into db
@@ -121,14 +128,12 @@ func (s *Service) UploadItems(ctx context.Context, input ProductInput) (Product,
 	createdProduct, err := s.repo.Add(ctx, p)
 
 	if err != nil {
-		return Product{}, fmt.Errorf("Error from the Add repo : %v" , err)
+		return Product{}, fmt.Errorf("Error from the Add repo : %v", err)
 	}
 
 	return createdProduct, nil
 
-
 }
-
 
 func (s *Service) UpdateItems(ctx context.Context, input UpdateProduct, id string) (Product, error) {
 
@@ -136,22 +141,22 @@ func (s *Service) UpdateItems(ctx context.Context, input UpdateProduct, id strin
 	prodDescription := strings.TrimSpace(input.Description)
 	prodCategory := strings.TrimSpace(input.Category)
 
-	if prodName == "" || prodDescription == "" || input.Price == 0 || prodCategory == ""{
+	if prodName == "" || prodDescription == "" || input.Price == 0 || prodCategory == "" {
 		return Product{}, errors.New("Required Field")
 	}
 
-	 objectId, err := bson.ObjectIDFromHex(id)
+	objectId, err := bson.ObjectIDFromHex(id)
 
 	// get existing public ids
 
 	existingProd, err := s.repo.GetById(ctx, objectId)
 
 	if err != nil {
-        if errors.Is(err, mongo.ErrNoDocuments) {
-            return Product{}, errors.New("product not found")
-        }
-        return Product{}, fmt.Errorf("unable to get existing product: %v", err)
-    }
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return Product{}, errors.New("product not found")
+		}
+		return Product{}, fmt.Errorf("unable to get existing product: %v", err)
+	}
 
 	cloud, err := utils.NewCloudinary()
 	if err != nil {
@@ -159,9 +164,9 @@ func (s *Service) UpdateItems(ctx context.Context, input UpdateProduct, id strin
 	}
 
 	if input.Files != nil {
-		for _, pubID := range existingProd.PublicIDs{
+		for _, pubID := range existingProd.PublicIDs {
 			_, err := cloud.Upload.Destroy(ctx, uploader.DestroyParams{
-					PublicID: pubID,
+				PublicID: pubID,
 			})
 
 			if err != nil {
@@ -169,41 +174,39 @@ func (s *Service) UpdateItems(ctx context.Context, input UpdateProduct, id strin
 			}
 		}
 
-
 		// upload new images
 
 		var imageUrls []string
 		var publicIds []string
 
-		for _,FileHeader := range input.Files {
-		
-		file, err := FileHeader.Open()
+		for _, FileHeader := range input.Files {
 
-		if err != nil {
-			return Product{}, fmt.Errorf("failed to get file header: %v", err)
+			file, err := FileHeader.Open()
+
+			if err != nil {
+				return Product{}, fmt.Errorf("failed to get file header: %v", err)
+			}
+
+			defer file.Close()
+
+			uploadRes, err := cloud.Upload.Upload(ctx, file, uploader.UploadParams{
+				Folder:         "product-images",
+				UniqueFilename: api.Bool(true),
+			})
+
+			if err != nil {
+				return Product{}, fmt.Errorf("Error getting result: %v", err)
+			}
+
+			imageUrls = append(imageUrls, uploadRes.SecureURL)
+			publicIds = append(publicIds, uploadRes.PublicID)
+
 		}
 
-		defer file.Close()
+		input.ImageURL = imageUrls
+		input.PublicIDs = publicIds
 
-		uploadRes , err := cloud.Upload.Upload(ctx, file, uploader.UploadParams{
-				Folder:   "product-images",
-				UniqueFilename: api.Bool(true),
-		})
-
-	if err != nil {
-       return Product{}, fmt.Errorf("Error getting result: %v", err)
-    }
-
-	imageUrls = append(imageUrls, uploadRes.SecureURL)
-	publicIds = append(publicIds, uploadRes.PublicID)
-
-	}
-
-	input.ImageURL = imageUrls
-	input.PublicIDs = publicIds
-
-
-	}else{
+	} else {
 
 		input.ImageURL = existingProd.ImageURL
 		input.PublicIDs = existingProd.PublicIDs
@@ -220,7 +223,6 @@ func (s *Service) UpdateItems(ctx context.Context, input UpdateProduct, id strin
 
 }
 
-
 func (s *Service) DeleteProduct(ctx context.Context, id string) error {
 
 	idHex, err := bson.ObjectIDFromHex(id)
@@ -232,11 +234,11 @@ func (s *Service) DeleteProduct(ctx context.Context, id string) error {
 	existingProd, err := s.repo.GetById(ctx, idHex)
 
 	if err != nil {
-        if errors.Is(err, mongo.ErrNoDocuments) {
-            return  errors.New("product not found")
-        }
-        return fmt.Errorf("unable to get existing product: %v", err)
-    }
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return errors.New("product not found")
+		}
+		return fmt.Errorf("unable to get existing product: %v", err)
+	}
 
 	// delete images from cloud
 
@@ -246,24 +248,21 @@ func (s *Service) DeleteProduct(ctx context.Context, id string) error {
 		return fmt.Errorf("Error occured inj the cloudinary %v", err)
 	}
 
-	for _, pubID := range existingProd.PublicIDs{
+	for _, pubID := range existingProd.PublicIDs {
 		_, err := cloud.Upload.Destroy(ctx, uploader.DestroyParams{
-					PublicID: pubID,
-			})
+			PublicID: pubID,
+		})
 
-			if err != nil {
-				return fmt.Errorf("failed to delete old image: %v", err)
-			}
+		if err != nil {
+			return fmt.Errorf("failed to delete old image: %v", err)
+		}
 
 	}
 
-
-	if err := s.repo.DeleteItem(ctx, idHex); err !=nil  {
+	if err := s.repo.DeleteItem(ctx, idHex); err != nil {
 		return fmt.Errorf("Error occured in the delete item repo: %v", err)
 	}
 
 	return nil
 
-
 }
-

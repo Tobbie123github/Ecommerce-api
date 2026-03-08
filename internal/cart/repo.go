@@ -29,13 +29,11 @@ func helperKey(userId string) string {
 	return "cart:" + userId
 }
 
-func (pr Repo) AddCart(ctx context.Context, productId string, userId string, quantity int) (Cart, error) {
+func (pr Repo) AddCart(ctx context.Context, productId string, userId string, quantity int, size string) (Cart, error) {
 
-	if productId == "" || userId == "" || quantity == 0 {
+	if productId == "" || userId == "" || quantity == 0 || size == "" {
 		return Cart{}, errors.New("Invalid body request")
 	}
-
-
 
 	id, err := bson.ObjectIDFromHex(productId)
 
@@ -51,12 +49,12 @@ func (pr Repo) AddCart(ctx context.Context, productId string, userId string, qua
 	if quantity > product.InStock {
 		return Cart{}, fmt.Errorf("Your quantity exceed peoduct in stock %v, %v", product.InStock, err)
 	}
-	
 
 	cartItem := CartItem{
 		ProductID: product.ID.Hex(),
 		Name:      product.Name,
 		Price:     product.Price,
+		Size:      size,
 		ImageURL:  product.ImageURL,
 		Quantity:  quantity,
 	}
@@ -131,7 +129,6 @@ func (pr Repo) GetCart(ctx context.Context, userId string) (Cart, error) {
 
 }
 
-
 func (pr Repo) DeleteCartItem(ctx context.Context, productId string, userId string) error {
 
 	key := helperKey(userId)
@@ -148,7 +145,7 @@ func (pr Repo) DeleteCartItem(ctx context.Context, productId string, userId stri
 func (pr Repo) DeleteAll(ctx context.Context, userId string) error {
 	key := helperKey(userId)
 
-	_, err := pr.rdb.Del(ctx, key).Result() 
+	_, err := pr.rdb.Del(ctx, key).Result()
 
 	if err != nil {
 		return errors.New("Error deleting all product from cart")

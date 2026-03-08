@@ -21,6 +21,7 @@ type CartItemRequest struct {
 	UserID    string `json:"user_id"`
 	ProductID string `json:"product_id"`
 	Quantity  int64  `json:"quantity"`
+	Size      string `json:"size"`
 }
 
 func (h *Handler) AddProductToCart(c *gin.Context) {
@@ -34,7 +35,16 @@ func (h *Handler) AddProductToCart(c *gin.Context) {
 		return
 	}
 
-	cart, err := h.repo.AddCart(c.Request.Context(), req.ProductID, req.UserID, int(req.Quantity))
+	userId, _ := middleware.GetUserId(c)
+
+	if req.UserID != userId {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Unauthroized",
+		})
+		return
+	}
+
+	cart, err := h.repo.AddCart(c.Request.Context(), req.ProductID, req.UserID, int(req.Quantity), req.Size)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

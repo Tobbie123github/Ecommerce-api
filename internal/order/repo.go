@@ -136,3 +136,28 @@ func (r *Repo) UpdateStatus(ctx context.Context, orderId string, status string, 
 	return nil
 
 }
+
+func (r *Repo) Orders(ctx context.Context) ([]Order, error) {
+
+	childCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+
+	defer cancel()
+
+	filter := bson.M{}
+
+	cursor, err := r.col.Find(childCtx, filter)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var orders []Order
+
+	if err := cursor.All(childCtx, &orders); err != nil {
+		return nil, err
+	}
+
+	return orders, nil
+
+	
+}
